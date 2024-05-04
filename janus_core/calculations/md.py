@@ -692,9 +692,13 @@ class NPT(MolecularDynamics):
         super().__init__(ensemble=ensemble, file_prefix=file_prefix, *args, **kwargs)
 
         self.ttime = thermostat_time * units.fs
-        scaled_bulk_modulus = bulk_modulus * units.GPa
+
         if barostat_time:
-            pfactor = (barostat_time * units.fs) ** 2 * scaled_bulk_modulus
+            pfactor = (barostat_time * units.fs) ** 2 * bulk_modulus * units.GPa
+            if self.logger:
+                self.logger.info(
+                    "NPT pfactor=%s GPa fs^2", barostat_time**2 * bulk_modulus
+                )
         else:
             pfactor = None
 
