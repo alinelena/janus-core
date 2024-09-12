@@ -48,8 +48,6 @@ class Phonons(BaseCalculation):
         Keyword arguments to pass to the selected calculator. Default is {}.
     set_calc : Optional[bool]
         Whether to set (new) calculators for structures. Default is None.
-    attach_logger : bool
-        Whether to attach a logger. Default is False.
     log_kwargs : Optional[dict[str, Any]]
         Keyword arguments to pass to `config_logger`. Default is {}.
     tracker_kwargs : Optional[dict[str, Any]]
@@ -60,31 +58,31 @@ class Phonons(BaseCalculation):
         Size of supercell for calculation. Default is 2.
     displacement : float
         Displacement for force constants calculation, in A. Default is 0.01.
-    symmetrize : bool
-        Whether to symmetrize force constants after calculation.
-        Default is False.
+    t_step : float
+        Temperature step for thermal properties calculations, in K. Default is 50.0.
+    t_min : float
+        Start temperature for thermal properties calculations, in K. Default is 0.0.
+    t_max : float
+        End temperature for thermal properties calculations, in K. Default is 1000.0.
     minimize : bool
         Whether to perform geometry optimisation before calculating phonons.
         Default is False.
-    minimize_kwargs : Optional[dict[str, Any]]
-        Keyword arguments to pass to geometry optimizer. Default is {}.
-    temp_min : float
-        Start temperature for thermal properties calculations, in K. Default is 0.0.
-    temp_max : float
-        End temperature for thermal properties calculations, in K. Default is 1000.0.
-    temp_step : float
-        Temperature step for thermal properties calculations, in K. Default is 50.0.
     force_consts_to_hdf5 : bool
         Whether to write force constants in hdf format or not.
         Default is True.
     plot_to_file : bool
         Whether to plot various graphs as band stuctures, dos/pdos in svg.
         Default is False.
+    symmetrize : bool
+        Whether to symmetrize force constants after calculation.
+        Default is False.
     write_results : bool
         Default for whether to write out results to file. Default is True.
     write_full : bool
         Whether to maximize information written in various output files.
         Default is True.
+    minimize_kwargs : Optional[dict[str, Any]]
+        Keyword arguments to pass to geometry optimizer. Default is {}.
     file_prefix : Optional[PathLike]
         Prefix for output filenames. Default is inferred from chemical formula of the
         structure.
@@ -132,22 +130,21 @@ class Phonons(BaseCalculation):
         read_kwargs: Optional[ASEReadArgs] = None,
         calc_kwargs: Optional[dict[str, Any]] = None,
         set_calc: Optional[bool] = None,
-        attach_logger: bool = False,
         log_kwargs: Optional[dict[str, Any]] = None,
         tracker_kwargs: Optional[dict[str, Any]] = None,
         calcs: MaybeSequence[PhononCalcs] = (),
         supercell: MaybeList[int] = 2,
         displacement: float = 0.01,
-        symmetrize: bool = False,
+        t_step: float = 50.0,
+        t_min: float = 0.0,
+        t_max: float = 1000.0,
         minimize: bool = False,
-        minimize_kwargs: Optional[dict[str, Any]] = None,
-        temp_min: float = 0.0,
-        temp_max: float = 1000.0,
-        temp_step: float = 50.0,
         force_consts_to_hdf5: bool = True,
         plot_to_file: bool = False,
+        symmetrize: bool = False,
         write_results: bool = True,
         write_full: bool = True,
+        minimize_kwargs: Optional[dict[str, Any]] = None,
         file_prefix: Optional[PathLike] = None,
     ) -> None:
         """
@@ -174,8 +171,6 @@ class Phonons(BaseCalculation):
             Keyword arguments to pass to the selected calculator. Default is {}.
         set_calc : Optional[bool]
             Whether to set (new) calculators for structures. Default is None.
-        attach_logger : bool
-            Whether to attach a logger. Default is False.
         log_kwargs : Optional[dict[str, Any]]
             Keyword arguments to pass to `config_logger`. Default is {}.
         tracker_kwargs : Optional[dict[str, Any]]
@@ -186,31 +181,31 @@ class Phonons(BaseCalculation):
             Size of supercell for calculation. Default is 2.
         displacement : float
             Displacement for force constants calculation, in A. Default is 0.01.
-        symmetrize : bool
-            Whether to symmetrize force constants after calculations.
-            Default is False.
+        t_step : float
+            Temperature step for thermal calculations, in K. Default is 50.0.
+        t_min : float
+            Start temperature for thermal calculations, in K. Default is 0.0.
+        t_max : float
+            End temperature for thermal calculations, in K. Default is 1000.0.
         minimize : bool
             Whether to perform geometry optimisation before calculating phonons.
             Default is False.
-        minimize_kwargs : Optional[dict[str, Any]]
-            Keyword arguments to pass to geometry optimizer. Default is {}.
-        temp_min : float
-            Start temperature for thermal calculations, in K. Default is 0.0.
-        temp_max : float
-            End temperature for thermal calculations, in K. Default is 1000.0.
-        temp_step : float
-            Temperature step for thermal calculations, in K. Default is 50.0.
         force_consts_to_hdf5 : bool
             Whether to write force constants in hdf format or not.
             Default is True.
         plot_to_file : bool
             Whether to plot various graphs as band stuctures, dos/pdos in svg.
             Default is False.
+        symmetrize : bool
+            Whether to symmetrize force constants after calculations.
+            Default is False.
         write_results : bool
             Default for whether to write out results to file. Default is True.
         write_full : bool
             Whether to maximize information written in various output files.
             Default is True.
+        minimize_kwargs : Optional[dict[str, Any]]
+            Keyword arguments to pass to geometry optimizer. Default is {}.
         file_prefix : Optional[PathLike]
             Prefix for output filenames. Default is inferred from structure name, or
             chemical formula of the structure.
@@ -219,16 +214,16 @@ class Phonons(BaseCalculation):
 
         self.calcs = calcs
         self.displacement = displacement
-        self.symmetrize = symmetrize
+        self.t_step = t_step
+        self.t_min = t_min
+        self.t_max = t_max
         self.minimize = minimize
-        self.minimize_kwargs = minimize_kwargs
-        self.temp_min = temp_min
-        self.temp_max = temp_max
-        self.temp_step = temp_step
         self.force_consts_to_hdf5 = force_consts_to_hdf5
         self.plot_to_file = plot_to_file
+        self.symmetrize = symmetrize
         self.write_results = write_results
         self.write_full = write_full
+        self.minimize_kwargs = minimize_kwargs
 
         # Ensure supercell is a valid list
         self.supercell = [supercell] * 3 if isinstance(supercell, int) else supercell
@@ -250,7 +245,6 @@ class Phonons(BaseCalculation):
             sequence_allowed=False,
             calc_kwargs=calc_kwargs,
             set_calc=set_calc,
-            attach_logger=attach_logger,
             log_kwargs=log_kwargs,
             tracker_kwargs=tracker_kwargs,
             file_prefix=file_prefix,
@@ -478,11 +472,11 @@ class Phonons(BaseCalculation):
 
         bands_file = self._build_filename("auto_bands.yml", filename=bands_file)
         self.results["phonon"].auto_band_structure(
-            write_yaml=True,
-            filename=bands_file,
+            write_yaml=False,
             with_eigenvectors=self.write_full,
             with_group_velocities=self.write_full,
         )
+        self.results["phonon"].write_yaml_band_structure(filename=f"{bands_file}.xz")
 
         bplt = self.results["phonon"].plot_band_structure()
         if save_plots:
@@ -515,9 +509,9 @@ class Phonons(BaseCalculation):
             self.logger.info("Starting thermal properties calculation")
             self.tracker.start_task("Thermal calculation")
 
-        self.results["phonon"].run_mesh()
+        self.results["phonon"].run_mesh((32, 32, 32))
         self.results["phonon"].run_thermal_properties(
-            t_step=self.temp_step, t_max=self.temp_max, t_min=self.temp_min
+            t_step=self.t_step, t_max=self.t_max, t_min=self.t_min
         )
         self.results["thermal_properties"] = self.results[
             "phonon"
@@ -563,7 +557,7 @@ class Phonons(BaseCalculation):
     def calc_dos(
         self,
         *,
-        mesh: MaybeList[float] = (10, 10, 10),
+        mesh: MaybeList[float] = (32, 32, 32),
         write_dos: Optional[bool] = None,
         **kwargs,
     ) -> None:
@@ -592,7 +586,7 @@ class Phonons(BaseCalculation):
             self.tracker.start_task("DOS calculation")
 
         self.results["phonon"].run_mesh(mesh)
-        self.results["phonon"].run_total_dos()
+        self.results["phonon"].run_total_dos(freq_pitch=0.03)
 
         if self.logger:
             emissions = self.tracker.stop_task().emissions
@@ -665,7 +659,7 @@ class Phonons(BaseCalculation):
     def calc_pdos(
         self,
         *,
-        mesh: MaybeList[float] = (10, 10, 10),
+        mesh: MaybeList[float] = (32, 32, 32),
         write_pdos: Optional[bool] = None,
         **kwargs,
     ) -> None:
