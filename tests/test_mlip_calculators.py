@@ -28,6 +28,8 @@ SEVENNET_PATH = MODEL_PATH / "sevennet_0.pth"
 
 ALIGNN_PATH = MODEL_PATH / "v5.27.2024"
 
+DPA3_PATH = MODEL_PATH / "2025-01-10-dpa3-mptrj.pth"
+
 
 @pytest.mark.parametrize(
     "arch, device, kwargs",
@@ -119,6 +121,8 @@ def test_invalid_device(arch):
         ("sevennet", "cpu", {"model_path": SEVENNET_PATH}),
         ("sevennet", "cpu", {}),
         ("sevennet", "cpu", {"model": "sevennet-0"}),
+        ("dpa3", "cpu", {"model_path": DPA3_PATH}),
+        ("dpa3", "cpu", {"model": DPA3_PATH}),
     ],
 )
 def test_extra_mlips(arch, device, kwargs):
@@ -158,6 +162,16 @@ def test_extra_mlips(arch, device, kwargs):
             "arch": "sevennet",
             "model_path": SEVENNET_PATH,
             "model": SEVENNET_PATH,
+        },
+        {
+            "arch": "dpa3",
+            "model_path": DPA3_PATH,
+            "model": DPA3_PATH,
+        },
+        {
+            "arch": "dpa3",
+            "model_path": DPA3_PATH,
+            "path": DPA3_PATH,
         },
     ],
 )

@@ -55,11 +55,16 @@ m3gnet = [
 sevennet = [
     "sevenn == 0.10.3",
 ]
+
+dpa3 = [
+    "deepmd-kit",
+]
 all = [
     "janus-core[alignn]",
     "janus-core[chgnet]",
     "janus-core[m3gnet]",
     "janus-core[sevennet]",
+    "janus-core[dpa3]",
 ]
 
 [project.scripts]
@@ -175,3 +180,6 @@ default-groups = [
     "docs",
     "pre-commit",
 ]
+
+[tool.uv.sources]
+deepmd-kit = { git = "https://github.com/deepmodeling/deepmd-kit.git", rev = "dpa3-alpha" }

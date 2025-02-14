@@ -17,6 +17,7 @@ MODEL_PATH = Path(__file__).parent / "models"
 MACE_PATH = MODEL_PATH / "mace_mp_small.model"
 SEVENNET_PATH = MODEL_PATH / "sevennet_0.pth"
 ALIGNN_PATH = MODEL_PATH / "v5.27.2024"
+DPA3_PATH = MODEL_PATH / "2025-01-10-dpa3-mptrj.pth"
 
 test_data = [
     (DATA_PATH / "benzene.xyz", -76.0605725422795, "energy", "energy", {}, None),
@@ -284,6 +285,7 @@ test_extra_mlips_data = [
     ("sevennet", "cpu", -27.061979293823242, {"model_path": SEVENNET_PATH}),
     ("sevennet", "cpu", -27.061979293823242, {}),
     ("sevennet", "cpu", -27.061979293823242, {"model_path": "SevenNet-0_11July2024"}),
+    ("dpa3", "cpu", -27.053507387638092, {"model_path": DPA3_PATH}),
 ]
 
 
