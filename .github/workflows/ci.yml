@@ -9,7 +9,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        python-version: ['3.9','3.10','3.11','3.12']
+        python-version: ["3.10","3.11","3.12"]
 
     steps:
       - uses: actions/checkout@v4
@@ -63,6 +63,9 @@ jobs:
         with:
           version: "0.5.7"
           python-version: "3.12"
+
+      - name: Install pandoc
+        uses: pandoc/actions/setup@v1
 
       - name: Install dependencies
         run: uv sync

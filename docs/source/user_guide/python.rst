@@ -2,13 +2,33 @@
 Python interface
 ================
 
-Jupyter Notebook tutorials illustrating the use of currently available calculations can be found in the `janus-tutorials <https://github.com/stfc/janus-tutorials>`_ repository. This currently includes examples for:
+Jupyter Notebook tutorials illustrating the use of currently available calculations can be found in the `tutorials <https://github.com/stfc/janus-core/tree/main/docs/source/tutorials>`_ documentation directory. This currently includes examples for:
 
-- `Single Point <https://colab.research.google.com/github/stfc/janus-tutorials/blob/main/single_point.ipynb>`_
-- `Geometry Optimization <https://colab.research.google.com/github/stfc/janus-tutorials/blob/main/geom_opt.ipynb>`_
-- `Molecular Dynamics <https://colab.research.google.com/github/stfc/janus-tutorials/blob/main/md.ipynb>`_
-- `Equation of State <https://colab.research.google.com/github/stfc/janus-tutorials/blob/main/eos.ipynb>`_
-- `Phonons <https://colab.research.google.com/github/stfc/janus-tutorials/blob/main/phonons.ipynb>`_
+.. |single_point| image:: https://colab.research.google.com/assets/colab-badge.svg
+    :target: https://colab.research.google.com/github/stfc/janus-core/blob/main/docs/source/tutorials/single_point.ipynb
+    :alt: Launch single point Colab
+
+.. |geom_opt| image:: https://colab.research.google.com/assets/colab-badge.svg
+    :target: https://colab.research.google.com/github/stfc/janus-core/blob/main/docs/source/tutorials/geom_opt.ipynb
+    :alt: Launch geometry optimisation Colab
+
+.. |md| image:: https://colab.research.google.com/assets/colab-badge.svg
+    :target: https://colab.research.google.com/github/stfc/janus-core/blob/main/docs/source/tutorials/md.ipynb
+    :alt: Launch molecular dynamics Colab
+
+.. |eos| image:: https://colab.research.google.com/assets/colab-badge.svg
+    :target: https://colab.research.google.com/github/stfc/janus-core/blob/main/docs/source/tutorials/eos.ipynb
+    :alt: Launch equation of state Colab
+
+.. |phonons| image:: https://colab.research.google.com/assets/colab-badge.svg
+    :target: https://colab.research.google.com/github/stfc/janus-core/blob/main/docs/source/tutorials/phonons.ipynb
+    :alt: Launch phonons Colab
+
+- :doc:`Single Point </tutorials/single_point>` |single_point|
+- :doc:`Geometry Optimization </tutorials/geom_opt>` |geom_opt|
+- :doc:`Molecular Dynamics </tutorials/md>` |md|
+- :doc:`Equation of State </tutorials/eos>` |eos|
+- :doc:`Phonons </tutorials/phonons>` |phonons|
 
 
 Calculation outputs
@@ -57,3 +77,30 @@ will return
     If running calculations with multiple MLIPs, ``arch`` and ``mlip_model`` will be overwritten with the most recent MLIP information.
     Results labelled by the architecture (e.g. ``mace_mp_energy``) will be saved between MLIPs,
     unless the same ``arch`` is chosen, in which case these values will also be overwritten.
+
+
+Additional Calculators
+======================
+
+Although ``janus-core`` only directly supports the MLIP calculators listed in :doc:`Getting started </getting_started/getting_started>`,
+any valid `ASE calculator <https://wiki.fysik.dtu.dk/ase/ase/calculators/calculators.html>`_
+can be attached to a structure, including calculators for currently unsupported MLIPs.
+
+This structure can then be passed to ``janus-core`` calculations, which can be run as usual.
+
+For example, performing geometry optimisation using the (`ASE built-in <https://wiki.fysik.dtu.dk/ase/ase/calculators/others.html#lennard-jones>`_) Lennard Jones potential calculator:
+
+.. code-block:: python
+
+    from janus_core.calculations.geom_opt import GeomOpt
+    from ase.calculators.lj import LennardJones
+    from ase.io import read
+
+    struct = read("tests/data/NaCl-deformed.cif")
+    struct.calc = LennardJones()
+
+    geom_opt = GeomOpt(
+        struct=struct,
+        fmax=0.001,
+    )
+    geom_opt.run()

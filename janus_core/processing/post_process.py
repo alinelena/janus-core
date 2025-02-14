@@ -37,29 +37,29 @@ def compute_rdf(
 
     Parameters
     ----------
-    data : MaybeSequence[Atoms]
+    data
         Dataset to compute RDF of.
-    ana : Analysis | None
+    ana
         ASE Analysis object for data reuse.
-    filenames : MaybeSequence[PathLike] | None
+    filenames
         Filenames to output data to. Must match number of RDFs computed.
-    by_elements : bool
+    by_elements
         Split RDF into pairwise by elements group. Default is False.
         N.B. mixed RDFs (e.g. C-H) include all self-RDFs (e.g. C-C),
         to get the pure (C-H) RDF subtract the self-RDFs.
-    rmax : float
+    rmax
         Maximum distance of RDF.
-    nbins : int
+    nbins
         Number of bins to divide RDF.
-    elements : MaybeSequence[int | str] | None
+    elements
         Make partial RDFs. If `by_elements` is true will filter to
         only display pairs in list.
-    index : SliceLike
+    index
         Images to analyze as:
         `index` if `int`,
         `start`, `stop`, `step` if `tuple`,
         `slice` if `slice` or `range`.
-    volume : float | None
+    volume
         Volume of cell for normalisation. Only needs to be provided
         if aperiodic cell. Default is (2*rmax)**3.
 
@@ -122,9 +122,9 @@ def compute_rdf(
                     f"to number of samples ({len(rdf)})"
                 )
 
-            for (dists, rdfs), out_path in zip(rdf.values(), filenames):
+            for (dists, rdfs), out_path in zip(rdf.values(), filenames, strict=True):
                 with open(out_path, "w", encoding="utf-8") as out_file:
-                    for dist, rdf_i in zip(dists, rdfs):
+                    for dist, rdf_i in zip(dists, rdfs, strict=True):
                         print(dist, rdf_i, file=out_file)
 
     else:
@@ -152,7 +152,7 @@ def compute_rdf(
                 filenames = filenames[0]
 
             with open(filenames, "w", encoding="utf-8") as out_file:
-                for dist, rdf_i in zip(*rdf):
+                for dist, rdf_i in zip(*rdf, strict=True):
                     print(dist, rdf_i, file=out_file)
 
     return rdf
@@ -165,7 +165,7 @@ def compute_vaf(
     use_velocities: bool = False,
     fft: bool = False,
     index: SliceLike = (0, None, 1),
-    filter_atoms: MaybeSequence[MaybeSequence[int | None]] = ((None),),
+    atoms_filter: MaybeSequence[MaybeSequence[int | str | None]] = ((None,),),
     time_step: float = 1.0,
 ) -> tuple[NDArray[float64], list[NDArray[float64]]]:
     """
@@ -173,23 +173,23 @@ def compute_vaf(
 
     Parameters
     ----------
-    data : Sequence[Atoms]
+    data
         Dataset to compute VAF of.
-    filenames : MaybeSequence[PathLike] | None
+    filenames
         If present, dump resultant VAF to file.
-    use_velocities : bool
+    use_velocities
         Compute VAF using velocities rather than momenta.
         Default is False.
-    fft : bool
+    fft
         Compute the fourier transformed VAF.
         Default is False.
-    index : SliceLike
+    index
         Images to analyze as `start`, `stop`, `step`.
         Default is all images.
-    filter_atoms : MaybeSequence[MaybeSequence[int | None]]
+    atoms_filter
         Compute the VAF averaged over subsets of the system.
         Default is all atoms.
-    time_step : float
+    time_step
         Time step for scaling lags to align with input data.
         Default is 1 (i.e. no scaling).
 
@@ -202,9 +202,10 @@ def compute_vaf(
 
     Notes
     -----
-    `filter_atoms` is given as a series of sequences of atoms, where
-    each element in the series denotes a VAF subset to calculate and
-    each sequence determines the atoms (by index) to be included in that VAF.
+    `atoms_filter` is given as a series of sequences of atoms or elements,
+    where each value in the series denotes a VAF subset to calculate and
+    each sequence determines the atoms (by index or element)
+    to be included in that VAF.
 
     E.g.
 
@@ -212,27 +213,27 @@ def compute_vaf(
 
         # Species indices in cell
         na = (1, 3, 5, 7)
-        cl = (2, 4, 6, 8)
+        # Species by name
+        cl = ('Cl')
 
-        compute_vaf(..., filter_atoms=(na, cl))
+        compute_vaf(..., atoms_filter=(na, cl))
 
     Would compute separate VAFs for each species.
 
     By default, one VAF will be computed for all atoms in the structure.
     """
     # Ensure if passed scalars they are turned into correct dimensionality
-    if not isinstance(filter_atoms, Sequence):
-        filter_atoms = (filter_atoms,)
-    if not isinstance(filter_atoms[0], Sequence):
-        filter_atoms = (filter_atoms,)
-
+    if isinstance(atoms_filter, str) or not isinstance(atoms_filter, Sequence):
+        atoms_filter = (atoms_filter,)
+    if isinstance(atoms_filter[0], str) or not isinstance(atoms_filter[0], Sequence):
+        atoms_filter = (atoms_filter,)
     if filenames and not isinstance(filenames, Sequence):
         filenames = (filenames,)
 
-        if len(filenames) != len(filter_atoms):
+        if len(filenames) != len(atoms_filter):
             raise ValueError(
                 f"Different number of file names ({len(filenames)}) "
-                f"to number of samples ({len(filter_atoms)})"
+                f"to number of samples ({len(atoms_filter)})"
             )
 
     # Extract requested data
@@ -247,12 +248,32 @@ def compute_vaf(
     n_steps = len(momenta)
     n_atoms = len(momenta[0])
 
-    # If filter_atoms not specified use all atoms
-    filter_atoms = [
-        atom if atom[0] is not None else range(n_atoms) for atom in filter_atoms
-    ]
+    filtered_atoms = []
+    atom_symbols = data[0].get_chemical_symbols()
+    symbols = set(atom_symbols)
+    for atoms in atoms_filter:
+        if any(atom is None for atom in atoms):
+            # If atoms_filter not specified use all atoms.
+            filtered_atoms.append(range(n_atoms))
+        elif all(isinstance(a, str) for a in atoms):
+            # If all symbols, get the matching indices.
+            atoms = set(atoms)
+            if atoms.difference(symbols):
+                raise ValueError(
+                    f"{atoms.difference(symbols)} not allowed in VAF"
+                    f", allowed symbols are {symbols}"
+                )
+            filtered_atoms.append(
+                [i for i in range(len(atom_symbols)) if atom_symbols[i] in list(atoms)]
+            )
+        elif all(isinstance(a, int) for a in atoms):
+            filtered_atoms.append(atoms)
+        else:
+            raise ValueError(
+                "Cannot mix element symbols and indices in vaf atoms_filter"
+            )
 
-    used_atoms = {atom for atoms in filter_atoms for atom in atoms}
+    used_atoms = {atom for atoms in filtered_atoms for atom in atoms}
     used_atoms = {j: i for i, j in enumerate(used_atoms)}
 
     vafs = np.sum(
@@ -282,14 +303,13 @@ def compute_vaf(
         lags,
         [
             np.average([vafs[used_atoms[i]] for i in atoms], axis=0)
-            for atoms in filter_atoms
+            for atoms in filtered_atoms
         ],
     )
-
     if filenames:
-        for vaf, filename in zip(vafs[1], filenames):
+        for vaf, filename in zip(vafs[1], filenames, strict=True):
             with open(filename, "w", encoding="utf-8") as out_file:
-                for lag, dat in zip(lags, vaf):
+                for lag, dat in zip(lags, vaf, strict=True):
                     print(lag, dat, file=out_file)
 
     return vafs

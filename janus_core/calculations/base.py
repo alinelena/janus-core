@@ -16,7 +16,21 @@ from janus_core.helpers.janus_types import (
 )
 from janus_core.helpers.log import config_logger, config_tracker
 from janus_core.helpers.struct_io import input_structs
-from janus_core.helpers.utils import FileNameMixin, none_to_dict
+from janus_core.helpers.utils import FileNameMixin, none_to_dict, set_log_tracker
+
+UNITS = {
+    "energy": "eV",
+    "forces": "ev/Ang",
+    "stress": "ev/Ang^3",
+    "hessian": "ev/Ang^2",
+    "time": "fs",
+    "real_time": "s",
+    "temperature": "K",
+    "pressure": "GPa",
+    "momenta": "(eV*u)^0.5",
+    "density": "g/cm^3",
+    "volume": "Ang^3",
+}
 
 
 class BaseCalculation(FileNameMixin):
@@ -25,41 +39,43 @@ class BaseCalculation(FileNameMixin):
 
     Parameters
     ----------
-    calc_name : str
+    calc_name
         Name of calculation being run, used for name of logger. Default is "base".
-    struct : MaybeSequence[Atoms] | None
+    struct
         ASE Atoms structure(s) to simulate. Required if `struct_path` is None.
         Default is None.
-    struct_path : PathLike | None
+    struct_path
         Path of structure to simulate. Required if `struct` is None.
         Default is None.
-    arch : Architectures
+    arch
         MLIP architecture to use for calculations. Default is "mace_mp".
-    device : Devices
+    device
         Device to run model on. Default is "cpu".
-    model_path : PathLike | None
+    model_path
         Path to MLIP model. Default is `None`.
-    read_kwargs : ASEReadArgs
+    read_kwargs
         Keyword arguments to pass to ase.io.read. Default is {}.
-    sequence_allowed : bool
+    sequence_allowed
         Whether a sequence of Atoms objects is allowed. Default is True.
-    calc_kwargs : dict[str, Any] | None
+    calc_kwargs
         Keyword arguments to pass to the selected calculator. Default is {}.
-    set_calc : bool | None
+    set_calc
         Whether to set (new) calculators for structures. Default is None.
-    attach_logger : bool
-        Whether to attach a logger. Default is False.
-    log_kwargs : dict[str, Any] | None
+    attach_logger
+        Whether to attach a logger. Default is True if "filename" is passed in
+        log_kwargs, else False.
+    log_kwargs
             Keyword arguments to pass to `config_logger`. Default is {}.
-    track_carbon : bool
-        Whether to track carbon emissions of calculation. Default is True.
-    tracker_kwargs : dict[str, Any] | None
+    track_carbon
+        Whether to track carbon emissions of calculation. Requires attach_logger.
+        Default is True if attach_logger is True, else False.
+    tracker_kwargs
             Keyword arguments to pass to `config_tracker`. Default is {}.
-    file_prefix : PathLike | None
+    file_prefix
         Prefix for output filenames. Default is None.
-    additional_prefix : str | None
+    additional_prefix
         Component to add to default file_prefix (joined by hyphens). Default is None.
-    param_prefix : str | None
+    param_prefix
         Additional parameters to add to default file_prefix. Default is None.
 
     Attributes
@@ -83,9 +99,9 @@ class BaseCalculation(FileNameMixin):
         sequence_allowed: bool = True,
         calc_kwargs: dict[str, Any] | None = None,
         set_calc: bool | None = None,
-        attach_logger: bool = False,
+        attach_logger: bool | None = None,
         log_kwargs: dict[str, Any] | None = None,
-        track_carbon: bool = True,
+        track_carbon: bool | None = None,
         tracker_kwargs: dict[str, Any] | None = None,
         file_prefix: PathLike | None = None,
         additional_prefix: str | None = None,
@@ -96,42 +112,44 @@ class BaseCalculation(FileNameMixin):
 
         Parameters
         ----------
-        calc_name : str
+        calc_name
             Name of calculation being run, used for name of logger. Default is "base".
-        struct : MaybeSequence[Atoms] | None
+        struct
             ASE Atoms structure(s) to simulate. Required if `struct_path` is None.
             Default is None.
-        struct_path : PathLike | None
+        struct_path
             Path of structure to simulate. Required if `struct` is None. Default is
             None.
-        arch : Architectures
+        arch
             MLIP architecture to use for calculations. Default is "mace_mp".
-        device : Devices
+        device
             Device to run MLIP model on. Default is "cpu".
-        model_path : PathLike | None
+        model_path
             Path to MLIP model. Default is `None`.
-        read_kwargs : ASEReadArgs | None
+        read_kwargs
             Keyword arguments to pass to ase.io.read. Default is {}.
-        sequence_allowed : bool
+        sequence_allowed
             Whether a sequence of Atoms objects is allowed. Default is True.
-        calc_kwargs : dict[str, Any] | None
+        calc_kwargs
             Keyword arguments to pass to the selected calculator. Default is {}.
-        set_calc : bool | None
+        set_calc
             Whether to set (new) calculators for structures. Default is None.
-        attach_logger : bool
-            Whether to attach a logger. Default is False.
-        log_kwargs : dict[str, Any] | None
+        attach_logger
+            Whether to attach a logger. Default is True if "filename" is passed in
+            log_kwargs, else False.
+        log_kwargs
             Keyword arguments to pass to `config_logger`. Default is {}.
-        track_carbon : bool
-            Whether to track carbon emissions of calculation. Default is True.
-        tracker_kwargs : dict[str, Any] | None
+        track_carbon
+            Whether to track carbon emissions of calculation. Requires attach_logger.
+            Default is True if attach_logger is True, else False.
+        tracker_kwargs
             Keyword arguments to pass to `config_tracker`. Default is {}.
-        file_prefix : PathLike | None
+        file_prefix
             Prefix for output filenames. Default is None.
-        additional_prefix : str | None
+        additional_prefix
             Component to add to default file_prefix (joined by hyphens). Default is
             None.
-        param_prefix : str | None
+        param_prefix
             Additional parameters to add to default file_prefix. Default is None.
         """
         read_kwargs, calc_kwargs, log_kwargs, tracker_kwargs = none_to_dict(
@@ -146,11 +164,14 @@ class BaseCalculation(FileNameMixin):
         self.read_kwargs = read_kwargs
         self.calc_kwargs = calc_kwargs
         self.log_kwargs = log_kwargs
-        self.track_carbon = track_carbon
         self.tracker_kwargs = tracker_kwargs
 
         if not self.model_path and "model_path" in self.calc_kwargs:
             raise ValueError("`model_path` must be passed explicitly")
+
+        attach_logger, self.track_carbon = set_log_tracker(
+            attach_logger, log_kwargs, track_carbon
+        )
 
         # Read structures and/or attach calculators
         # Note: logger not set up so yet so not passed here
@@ -202,3 +223,21 @@ class BaseCalculation(FileNameMixin):
         self.tracker = config_tracker(
             self.logger, self.track_carbon, **self.tracker_kwargs
         )
+
+    def _set_info_units(
+        self, keys: Sequence[str] = ("energy", "forces", "stress")
+    ) -> None:
+        """
+        Save units to structure info.
+
+        Parameters
+        ----------
+        keys
+            Keys for which to add units to structure info. Default is
+            ("energy", "forces", "stress").
+        """
+        if isinstance(self.struct, Sequence):
+            for image in self.struct:
+                image.info["units"] = {key: UNITS[key] for key in keys}
+        else:
+            self.struct.info["units"] = {key: UNITS[key] for key in keys}

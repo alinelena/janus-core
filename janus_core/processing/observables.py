@@ -5,12 +5,15 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from ase import Atoms, units
+from ase import Atoms
+from ase.units import create_units
 
 if TYPE_CHECKING:
     from janus_core.helpers.janus_types import SliceLike
 
 from janus_core.helpers.utils import slicelike_to_startstopstep
+
+units = create_units("2014")
 
 
 # pylint: disable=too-few-public-methods
@@ -20,7 +23,7 @@ class Observable(ABC):
 
     Parameters
     ----------
-    atoms_slice : list[int] | SliceLike | None = None
+    atoms_slice
         A slice of atoms to observe.
     """
 
@@ -30,7 +33,7 @@ class Observable(ABC):
 
         Parameters
         ----------
-        atoms_slice : list[int] | SliceLike | None
+        atoms_slice
             A slice of atoms to observe. By default all atoms are included.
         """
         if not atoms_slice:
@@ -49,7 +52,7 @@ class Observable(ABC):
 
         Parameters
         ----------
-        atoms : Atoms
+        atoms
             Atoms object to extract values from.
 
         Returns
@@ -65,7 +68,7 @@ class ComponentMixin:
 
     Parameters
     ----------
-    components : dict[str, int]
+    components
         Symbolic components mapped to indices.
     """
 
@@ -75,7 +78,7 @@ class ComponentMixin:
 
         Parameters
         ----------
-        components : dict[str, int]
+        components
             Symbolic components mapped to indices.
         """
         self._allowed_components = components
@@ -111,7 +114,7 @@ class ComponentMixin:
 
         Parameters
         ----------
-        components : str
+        components
             The component symbols to check.
 
         Raises
@@ -121,7 +124,7 @@ class ComponentMixin:
         """
         if any(components - self._allowed_components.keys()):
             raise ValueError(
-                f"'{components-self._allowed_components.keys()}'"
+                f"'{components - self._allowed_components.keys()}'"
                 f" invalid, must be '{', '.join(self._allowed_components)}'"
             )
 
@@ -135,11 +138,11 @@ class Stress(Observable, ComponentMixin):
 
     Parameters
     ----------
-    components : list[str]
+    components
         Symbols for correlated tensor components, xx, yy, etc.
-    atoms_slice : list[int] | SliceLike | None = None
+    atoms_slice
         List or slice of atoms to observe velocities from.
-    include_ideal_gas : bool
+    include_ideal_gas
         Calculate with the ideal gas contribution.
     """
 
@@ -155,11 +158,11 @@ class Stress(Observable, ComponentMixin):
 
         Parameters
         ----------
-        components : list[str]
+        components
             Symbols for tensor components, xx, yy, etc.
-        atoms_slice : list[int] | SliceLike | None = None
+        atoms_slice
             List or slice of atoms to observe velocities from.
-        include_ideal_gas : bool
+        include_ideal_gas
             Calculate with the ideal gas contribution.
         """
         ComponentMixin.__init__(
@@ -187,7 +190,7 @@ class Stress(Observable, ComponentMixin):
 
         Parameters
         ----------
-        atoms : Atoms
+        atoms
             Atoms object to extract values from.
 
         Returns
@@ -225,9 +228,9 @@ class Velocity(Observable, ComponentMixin):
 
     Parameters
     ----------
-    components : list[str]
+    components
         Symbols for velocity components, x, y, z.
-    atoms_slice : list[int] | SliceLike | None = None
+    atoms_slice
         List or slice of atoms to observe velocities from.
     """
 
@@ -242,9 +245,9 @@ class Velocity(Observable, ComponentMixin):
 
         Parameters
         ----------
-        components : list[str]
+        components
             Symbols for tensor components, x, y, and z.
-        atoms_slice : Union[list[int], SliceLike]
+        atoms_slice
             List or slice of atoms to observe velocities from.
         """
         ComponentMixin.__init__(self, components={"x": 0, "y": 1, "z": 2})
@@ -258,7 +261,7 @@ class Velocity(Observable, ComponentMixin):
 
         Parameters
         ----------
-        atoms : Atoms
+        atoms
             Atoms object to extract values from.
 
         Returns
@@ -266,4 +269,4 @@ class Velocity(Observable, ComponentMixin):
         list[float]
             The velocity values.
         """
-        return atoms.get_velocities()[self.atoms_slice, :][:, self._indices].flatten()
+        return atoms.get_velocities()[self.atoms_slice, :][:, self._indices]

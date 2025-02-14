@@ -22,7 +22,7 @@ from janus_core.helpers.janus_types import (
 )
 from janus_core.helpers.mlip_calculators import check_calculator
 from janus_core.helpers.struct_io import output_structs
-from janus_core.helpers.utils import none_to_dict
+from janus_core.helpers.utils import none_to_dict, track_progress
 
 
 class SinglePoint(BaseCalculation):
@@ -31,52 +31,52 @@ class SinglePoint(BaseCalculation):
 
     Parameters
     ----------
-    struct : MaybeSequence[Atoms] | None
+    struct
         ASE Atoms structure(s) to simulate. Required if `struct_path` is None.
         Default is None.
-    struct_path : PathLike | None
+    struct_path
         Path of structure to simulate. Required if `struct` is None.
         Default is None.
-    arch : Architectures
+    arch
         MLIP architecture to use for single point calculations.
         Default is "mace_mp".
-    device : Devices
+    device
         Device to run model on. Default is "cpu".
-    model_path : PathLike | None
+    model_path
         Path to MLIP model. Default is `None`.
-    read_kwargs : ASEReadArgs
+    read_kwargs
         Keyword arguments to pass to ase.io.read. By default,
         read_kwargs["index"] is ":".
-    calc_kwargs : dict[str, Any] | None
+    calc_kwargs
         Keyword arguments to pass to the selected calculator. Default is {}.
-    set_calc : bool | None
+    set_calc
         Whether to set (new) calculators for structures. Default is None.
-    attach_logger : bool
-        Whether to attach a logger. Default is False.
-    log_kwargs : dict[str, Any] | None
+    attach_logger
+        Whether to attach a logger. Default is True if "filename" is passed in
+        log_kwargs, else False.
+    log_kwargs
             Keyword arguments to pass to `config_logger`. Default is {}.
-    track_carbon : bool
-        Whether to track carbon emissions of calculation. Default is True.
-    tracker_kwargs : dict[str, Any] | None
+    track_carbon
+        Whether to track carbon emissions of calculation. Requires attach_logger.
+        Default is True if attach_logger is True, else False.
+    tracker_kwargs
             Keyword arguments to pass to `config_tracker`. Default is {}.
-    properties : MaybeSequence[Properties]
+    properties
         Physical properties to calculate. If not specified, "energy",
         "forces", and "stress" will be returned.
-    write_results : bool
+    write_results
         True to write out structure with results of calculations. Default is False.
-    write_kwargs : OutputKwargs | None
+    write_kwargs
         Keyword arguments to pass to ase.io.write if saving structure with results of
         calculations. Default is {}.
+    enable_progress_bar
+        Whether to show a progress bar when applied to a file containing many
+        structures. Default is False.
 
     Attributes
     ----------
     results : CalcResults
         Dictionary of calculated results, with keys from `properties`.
-
-    Methods
-    -------
-    run()
-        Run single point calculations.
     """
 
     def __init__(
@@ -90,61 +90,68 @@ class SinglePoint(BaseCalculation):
         read_kwargs: ASEReadArgs | None = None,
         calc_kwargs: dict[str, Any] | None = None,
         set_calc: bool | None = None,
-        attach_logger: bool = False,
+        attach_logger: bool | None = None,
         log_kwargs: dict[str, Any] | None = None,
-        track_carbon: bool = True,
+        track_carbon: bool | None = None,
         tracker_kwargs: dict[str, Any] | None = None,
         properties: MaybeSequence[Properties] = (),
         write_results: bool = False,
         write_kwargs: OutputKwargs | None = None,
+        enable_progress_bar: bool = False,
     ) -> None:
         """
         Read the structure being simulated and attach an MLIP calculator.
 
         Parameters
         ----------
-        struct : MaybeSequence[Atoms] | None
+        struct
             ASE Atoms structure(s) to simulate. Required if `struct_path`
             is None. Default is None.
-        struct_path : PathLike | None
+        struct_path
             Path of structure to simulate. Required if `struct` is None.
             Default is None.
-        arch : Architectures
+        arch
             MLIP architecture to use for single point calculations.
             Default is "mace_mp".
-        device : Devices
+        device
             Device to run MLIP model on. Default is "cpu".
-        model_path : PathLike | None
+        model_path
             Path to MLIP model. Default is `None`.
-        read_kwargs : ASEReadArgs | None
+        read_kwargs
             Keyword arguments to pass to ase.io.read. By default,
             read_kwargs["index"] is ":".
-        calc_kwargs : dict[str, Any] | None
+        calc_kwargs
             Keyword arguments to pass to the selected calculator. Default is {}.
-        set_calc : bool | None
+        set_calc
             Whether to set (new) calculators for structures. Default is None.
-        attach_logger : bool
-            Whether to attach a logger. Default is False.
-        log_kwargs : dict[str, Any] | None
+        attach_logger
+            Whether to attach a logger. Default is True if "filename" is passed in
+            log_kwargs, else False.
+        log_kwargs
             Keyword arguments to pass to `config_logger`. Default is {}.
-        track_carbon : bool
-            Whether to track carbon emissions of calculation. Default is True.
-        tracker_kwargs : dict[str, Any] | None
+        track_carbon
+            Whether to track carbon emissions of calculation. Requires attach_logger.
+            Default is True if attach_logger is True, else False.
+        tracker_kwargs
             Keyword arguments to pass to `config_tracker`. Default is {}.
-        properties : MaybeSequence[Properties]
+        properties
             Physical properties to calculate. If not specified, "energy",
             "forces", and "stress" will be returned.
-        write_results : bool
+        write_results
             True to write out structure with results of calculations. Default is False.
-        write_kwargs : OutputKwargs | None
+        write_kwargs
             Keyword arguments to pass to ase.io.write if saving structure with results
             of calculations. Default is {}.
+        enable_progress_bar
+            Whether to show a progress bar when applied to a file containing many
+            structures. Default is False.
         """
         read_kwargs, write_kwargs = none_to_dict(read_kwargs, write_kwargs)
 
         self.write_results = write_results
         self.write_kwargs = write_kwargs
         self.log_kwargs = log_kwargs
+        self.enable_progress_bar = enable_progress_bar
 
         # Read full trajectory by default
         read_kwargs.setdefault("index", ":")
@@ -197,7 +204,7 @@ class SinglePoint(BaseCalculation):
 
         Parameters
         ----------
-        value : MaybeSequence[Properties]
+        value
             Physical properties to be calculated.
         """
         if isinstance(value, str):
@@ -234,7 +241,12 @@ class SinglePoint(BaseCalculation):
             Potential energy of structure(s).
         """
         if isinstance(self.struct, Sequence):
-            return [struct.get_potential_energy() for struct in self.struct]
+            struct_sequence = self.struct
+            if self.enable_progress_bar:
+                struct_sequence = track_progress(
+                    struct_sequence, "Computing potential energies..."
+                )
+            return [struct.get_potential_energy() for struct in struct_sequence]
 
         return self.struct.get_potential_energy()
 
@@ -248,7 +260,10 @@ class SinglePoint(BaseCalculation):
             Forces of structure(s).
         """
         if isinstance(self.struct, Sequence):
-            return [struct.get_forces() for struct in self.struct]
+            struct_sequence = self.struct
+            if self.enable_progress_bar:
+                struct_sequence = track_progress(struct_sequence, "Computing forces...")
+            return [struct.get_forces() for struct in struct_sequence]
 
         return self.struct.get_forces()
 
@@ -262,7 +277,12 @@ class SinglePoint(BaseCalculation):
             Stress of structure(s).
         """
         if isinstance(self.struct, Sequence):
-            return [struct.get_stress() for struct in self.struct]
+            struct_sequence = self.struct
+            if self.enable_progress_bar:
+                struct_sequence = track_progress(
+                    struct_sequence, "Computing stresses..."
+                )
+            return [struct.get_stress() for struct in struct_sequence]
 
         return self.struct.get_stress()
 
@@ -272,7 +292,7 @@ class SinglePoint(BaseCalculation):
 
         Parameters
         ----------
-        struct : Atoms
+        struct
             Structure to calculate Hessian for.
 
         Returns
@@ -301,7 +321,12 @@ class SinglePoint(BaseCalculation):
             Hessian of structure(s).
         """
         if isinstance(self.struct, Sequence):
-            return [self._calc_hessian(struct) for struct in self.struct]
+            struct_sequence = self.struct
+            if self.enable_progress_bar:
+                struct_sequence = track_progress(
+                    struct_sequence, "Computing Hessian..."
+                )
+            return [self._calc_hessian(struct) for struct in struct_sequence]
 
         return self._calc_hessian(self.struct)
 
@@ -320,6 +345,8 @@ class SinglePoint(BaseCalculation):
             self.logger.info("Starting single point calculation")
         if self.tracker:
             self.tracker.start_task("Single point")
+
+        self._set_info_units(self.properties)
 
         if "energy" in self.properties:
             self.results["energy"] = self._get_potential_energy()

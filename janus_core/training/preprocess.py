@@ -11,7 +11,7 @@ import yaml
 
 from janus_core.helpers.janus_types import PathLike
 from janus_core.helpers.log import config_logger, config_tracker
-from janus_core.helpers.utils import check_files_exist, none_to_dict
+from janus_core.helpers.utils import check_files_exist, none_to_dict, set_log_tracker
 
 
 def preprocess(
@@ -19,7 +19,7 @@ def preprocess(
     req_file_keys: Sequence[PathLike] = ("train_file", "test_file", "valid_file"),
     attach_logger: bool = False,
     log_kwargs: dict[str, Any] | None = None,
-    track_carbon: bool = True,
+    track_carbon: bool | None = None,
     tracker_kwargs: dict[str, Any] | None = None,
 ) -> None:
     """
@@ -30,18 +30,20 @@ def preprocess(
 
     Parameters
     ----------
-    mlip_config : PathLike
+    mlip_config
         Configuration file to pass to MLIP.
-    req_file_keys : Sequence[PathLike]
+    req_file_keys
         List of files that must exist if defined in the configuration file.
         Default is ("train_file", "test_file", "valid_file").
-    attach_logger : bool
-        Whether to attach a logger. Default is False.
-    log_kwargs : dict[str, Any] | None
+    attach_logger
+        Whether to attach a logger. Default is True if "filename" is passed in
+        log_kwargs, else False.
+    log_kwargs
         Keyword arguments to pass to `config_logger`. Default is {}.
-    track_carbon : bool
-        Whether to track carbon emissions of calculation. Default is True.
-    tracker_kwargs : dict[str, Any] | None
+    track_carbon
+        Whether to track carbon emissions of calculation. Requires attach_logger.
+        Default is True if attach_logger is True, else False.
+    tracker_kwargs
         Keyword arguments to pass to `config_tracker`. Default is {}.
     """
     log_kwargs, tracker_kwargs = none_to_dict(log_kwargs, tracker_kwargs)
@@ -50,6 +52,10 @@ def preprocess(
     with open(mlip_config, encoding="utf8") as file:
         options = yaml.safe_load(file)
     check_files_exist(options, req_file_keys)
+
+    attach_logger, track_carbon = set_log_tracker(
+        attach_logger, log_kwargs, track_carbon
+    )
 
     # Configure logging
     if attach_logger:
@@ -61,17 +67,7 @@ def preprocess(
     if logger and "foundation_model" in options:
         logger.info("Fine tuning model: %s", options["foundation_model"])
 
-    # Parse options from config, as MACE cannot read config file yet
-    args = []
-    for key, value in options.items():
-        if isinstance(value, bool):
-            if value is True:
-                args.append(f"--{key}")
-        else:
-            args.append(f"--{key}")
-            args.append(f"{value}")
-
-    mlip_args = mace_parser().parse_args(args)
+    mlip_args = mace_parser().parse_args(["--config", str(mlip_config)])
 
     if logger:
         logger.info("Starting preprocessing")

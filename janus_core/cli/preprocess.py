@@ -1,9 +1,6 @@
-# noqa: I002, FA102
 """Set up MLIP preprocessing commandline interface."""
 
-# Issues with future annotations and typer
-# c.f. https://github.com/maxb2/typer-config/issues/295
-# from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Annotated
@@ -38,14 +35,14 @@ def preprocess(
 
     Parameters
     ----------
-    mlip_config : Path
+    mlip_config
         Configuration file to pass to MLIP CLI.
-    log : Optional[Path]
+    log
         Path to write logs to. Default is Path("preprocess-log.yml").
-    tracker : bool
+    tracker
         Whether to save carbon emissions of calculation in log file and summary.
         Default is True.
-    summary : Optional[Path]
+    summary
         Path to save summary of inputs, start/end time, and carbon emissions. Default
         is Path("preprocess-summary.yml").
     """

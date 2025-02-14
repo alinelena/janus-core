@@ -24,16 +24,22 @@ import janus_core
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "numpydoc",
     "sphinx.ext.autodoc",
     "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinxcontrib.contentui",
     "sphinx_copybutton",
+    "sphinx_autodoc_typehints",
+    "nbsphinx",
 ]
 
-numpydoc_validation_checks = {"all", "EX01", "SA01", "ES01"}
+always_use_bars_union = True
+napoleon_include_special_with_doc = True
+napoleon_use_param = True
+
+numpydoc_validation_checks = {"all", "EX01", "SA01", "ES01", "PR04"}
 numpydoc_validation_exclude = {
     r"\.__weakref__$",
     r"\.__repr__$",
@@ -190,20 +196,30 @@ html_search_language = "en"
 
 # Warnings to ignore when using the -n (nitpicky) option
 # We should ignore any python built-in exception, for instance
+nitpicky = True
 nitpick_ignore = [
     ("py:class", "Logger"),
+    ("py:class", "float64"),
     ("py:class", "numpy.float64"),
+    ("py:class", "NDArray"),
+    ("py:class", "ndarray"),
     ("py:class", "typer.models.Context"),
     ("py:class", "ellipsis"),
     ("py:class", "janus_core.helpers.stats.T"),
+    ("py:class", "PhonopyAtoms"),
     ("py:class", "phonopy.structure.atoms.PhonopyAtoms"),
     ("py:class", "ase.optimize.optimize.Optimizer"),
-    ("py:class", "codecarbon.emissions_tracker.OfflineEmissionsTracker"),
-    ("py:class", "_io.StringIO"),
+    ("py:class", "Dynamics"),
+    ("py:class", "OfflineEmissionsTracker"),
+    ("py:class", "StringIO"),
     ("py:class", "Architectures"),
     ("py:class", "Devices"),
+    ("py:class", "Properties"),
+    ("py:class", "PhononCalcs"),
+    ("py:class", "MaybeList"),
     ("py:class", "MaybeSequence"),
     ("py:class", "SliceLike"),
+    ("py:class", "StartStopStep"),
     ("py:class", "PathLike"),
     ("py:class", "Atoms"),
     ("py:class", "Calculator"),

@@ -6,7 +6,7 @@ from collections.abc import Collection, Sequence
 from enum import Enum
 import logging
 from pathlib import Path, PurePath
-from typing import IO, TYPE_CHECKING, Literal, Optional, TypedDict, TypeVar, Union
+from typing import IO, TYPE_CHECKING, Literal, TypedDict, TypeVar
 
 from ase import Atoms
 from ase.eos import EquationOfState
@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 # General
 
 T = TypeVar("T")
-MaybeList = Union[T, list[T]]
-MaybeSequence = Union[T, Sequence[T]]
-PathLike = Union[str, Path]
-StartStopStep = tuple[Optional[int], Optional[int], int]
-SliceLike = Union[slice, range, int, StartStopStep]
+MaybeList = T | list[T]
+MaybeSequence = T | Sequence[T]
+PathLike = str | Path
+StartStopStep = tuple[int | None, int | None, int]
+SliceLike = slice | range | int | StartStopStep
 
 # ASE Arg types
 
@@ -77,7 +77,7 @@ class PostProcessKwargs(TypedDict, total=False):
     vaf_start: int
     vaf_stop: int | None
     vaf_step: int
-    vaf_output_file: PathLike | None
+    vaf_output_files: Sequence[PathLike] | None
 
 
 class CorrelationKwargs(TypedDict, total=True):
@@ -118,7 +118,7 @@ Architectures = Literal[
     "mace", "mace_mp", "mace_off", "m3gnet", "chgnet", "alignn", "sevennet", "orb"
 ]
 Devices = Literal["cpu", "cuda", "mps", "xpu"]
-Ensembles = Literal["nph", "npt", "nve", "nvt", "nvt-nh"]
+Ensembles = Literal["nph", "npt", "nve", "nvt", "nvt-nh", "nvt-csvr", "npt-mtk"]
 Properties = Literal["energy", "stress", "forces", "hessian"]
 PhononCalcs = Literal["bands", "dos", "pdos", "thermal"]
 

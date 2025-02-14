@@ -1,12 +1,9 @@
-# ruff: noqa: I002, FA100
 """Set up md commandline interface."""
 
-# Issues with future annotations and typer
-# c.f. https://github.com/maxb2/typer-config/issues/295
-# from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Optional, get_args
+from typing import Annotated, get_args
 
 from typer import Context, Option, Typer
 from typer_config import use_config
@@ -43,21 +40,61 @@ def md(
     thermostat_time: Annotated[
         float,
         Option(
-            help="Thermostat time for NPT, NVT Nosé-Hoover, or NPH simulation, in fs."
+            help=(
+                """
+                Thermostat time for NPT, NPT-MTK, NVT Nosé-Hoover, or NPH simulation,
+                in fs. Default is 50 fs for NPT and NVT Nosé-Hoover, or 100 fs for
+                NPT-MTK.
+                """
+            )
         ),
-    ] = 50.0,
+    ] = None,
     barostat_time: Annotated[
-        float, Option(help="Barostat time for NPT simulation, in fs.")
-    ] = 75.0,
+        float,
+        Option(
+            help=(
+                """
+                Barostat time for NPT, NPT-MTK or NPH simulation, in fs.
+                Default is 75 fs for NPT and NPH, or 1000 fs for NPT-MTK.
+                """
+            )
+        ),
+    ] = None,
     bulk_modulus: Annotated[
         float, Option(help="Bulk modulus for NPT or NPH simulation, in GPa.")
     ] = 2.0,
     pressure: Annotated[
-        float, Option(help="Pressure fpr NPT or NPH simulation, in GPa.")
+        float, Option(help="Pressure for NPT or NPH simulation, in GPa.")
     ] = 0.0,
     friction: Annotated[
         float, Option(help="Friction coefficient for NVT simulation, in fs^-1.")
     ] = 0.005,
+    taut: Annotated[
+        float,
+        Option(
+            help="Temperature coupling time constant for NVT CSVR simulation, in fs."
+        ),
+    ] = 100.0,
+    thermostat_chain: Annotated[
+        int,
+        Option(help="Number of variables in thermostat chain for NPT MTK simulation."),
+    ] = 3,
+    barostat_chain: Annotated[
+        int,
+        Option(help="Number of variables in barostat chain for NPT MTK simulation."),
+    ] = 3,
+    thermostat_substeps: Annotated[
+        int,
+        Option(
+            help="Number of sub-steps in thermostat integration for NPT MTK simulation."
+        ),
+    ] = 1,
+    barostat_substeps: Annotated[
+        int,
+        Option(
+            help="Number of sub-steps in barostat integration for NPT MTK simulation."
+        ),
+    ] = 1,
     ensemble_kwargs: EnsembleKwargs = None,
     arch: Architecture = "mace_mp",
     device: Device = "cpu",
@@ -95,7 +132,7 @@ def md(
         int, Option(help="Frequency to rescale velocities during equilibration.")
     ] = 10,
     file_prefix: Annotated[
-        Optional[Path],
+        Path | None,
         Option(
             help=(
                 """
@@ -110,7 +147,7 @@ def md(
         bool, Option(help="Whether to infer restart file if restarting dynamics.")
     ] = True,
     restart_stem: Annotated[
-        Optional[Path],
+        Path | None,
         Option(help="Stem for restart file name. Default inferred from `file_prefix`."),
     ] = None,
     restart_every: Annotated[
@@ -123,7 +160,7 @@ def md(
         int, Option(help="Restart files to keep if rotating.")
     ] = 4,
     final_file: Annotated[
-        Optional[Path],
+        Path | None,
         Option(
             help=(
                 """
@@ -134,7 +171,7 @@ def md(
         ),
     ] = None,
     stats_file: Annotated[
-        Optional[Path],
+        Path | None,
         Option(
             help=(
                 """
@@ -146,7 +183,7 @@ def md(
     ] = None,
     stats_every: Annotated[int, Option(help="Frequency to output statistics.")] = 100,
     traj_file: Annotated[
-        Optional[Path],
+        Path | None,
         Option(help="File to save trajectory. Default inferred from `file_prefix`."),
     ] = None,
     traj_append: Annotated[bool, Option(help="Whether to append trajectory.")] = False,
@@ -155,23 +192,23 @@ def md(
         int, Option(help="Frequency of steps to save trajectory.")
     ] = 100,
     temp_start: Annotated[
-        Optional[float],
+        float | None,
         Option(help="Temperature to start heating, in K."),
     ] = None,
     temp_end: Annotated[
-        Optional[float],
+        float | None,
         Option(help="Maximum temperature for heating, in K."),
     ] = None,
     temp_step: Annotated[
-        Optional[float], Option(help="Size of temperature steps when heating, in K.")
+        float | None, Option(help="Size of temperature steps when heating, in K.")
     ] = None,
     temp_time: Annotated[
-        Optional[float], Option(help="Time between heating steps, in fs.")
+        float | None, Option(help="Time between heating steps, in fs.")
     ] = None,
     write_kwargs: WriteKwargs = None,
     post_process_kwargs: PostProcessKwargs = None,
     seed: Annotated[
-        Optional[int],
+        int | None,
         Option(help="Random seed for numpy.random and random functions."),
     ] = None,
     log: LogPath = None,
@@ -185,120 +222,134 @@ def md(
 
     Parameters
     ----------
-    ctx : Context
+    ctx
         Typer (Click) Context. Automatically set.
-    ensemble : str
+    ensemble
         Name of thermodynamic ensemble.
-    struct : Path
+    struct
         Path of structure to simulate.
-    steps : int
+    steps
         Number of steps in simulation. Default is 0.
-    timestep : float
+    timestep
         Timestep for integrator, in fs. Default is 1.0.
-    temp : float
+    temp
         Temperature, in K. Default is 300.
-    thermostat_time : float
-        Thermostat time, in fs. Default is 50.0.
-    barostat_time : float
-        Barostat time, in fs. Default is 75.0.
-    bulk_modulus : float
+    thermostat_time
+        Thermostat time for NPT, NPT-MTK, NVT Nosé-Hoover or NPH simulation,
+        in fs. Default is 50 fs for NPT, NVT Nosé-Hoover and NPH, or 100 fs for NPT-MTK.
+    barostat_time
+        Barostat time for NPT, NPT-MTK or NPH simulation, in fs.
+        Default is 75 fs for NPT and NPH, or 1000 fs for NPT-MTK.
+    bulk_modulus
         Bulk modulus, in GPa. Default is 2.0.
-    pressure : float
+    pressure
         Pressure, in GPa. Default is 0.0.
-    friction : float
+    friction
         Friction coefficient in fs^-1. Default is 0.005.
-    ensemble_kwargs : Optional[dict[str, Any]]
+    taut
+        Time constant for CSVR thermostat coupling, in fs. Default is 100.0.
+    thermostat_chain
+        Number of variables in thermostat chain for NPT MTK simulation. Default is 3.
+    barostat_chain
+        Number of variables in barostat chain for NPT MTK simulation. Default is 3.
+    thermostat_substeps
+        Number of sub-steps in thermostat integration for NPT MTK simulation.
+        Default is 1.
+    barostat_substeps
+        Number of sub-steps in barostat integration for NPT MTK simulation.
+        Default is 1.
+    ensemble_kwargs
         Keyword arguments to pass to ensemble initialization. Default is {}.
-    arch : Optional[str]
+    arch
         MLIP architecture to use for molecular dynamics.
         Default is "mace_mp".
-    device : Optional[str]
+    device
         Device to run model on. Default is "cpu".
-    model_path : Optional[str]
+    model_path
         Path to MLIP model. Default is `None`.
-    read_kwargs : Optional[dict[str, Any]]
+    read_kwargs
         Keyword arguments to pass to ase.io.read. By default,
             read_kwargs["index"] is -1.
-    calc_kwargs : Optional[dict[str, Any]]
+    calc_kwargs
         Keyword arguments to pass to the selected calculator. Default is {}.
-    equil_steps : int
+    equil_steps
         Maximum number of steps at which to perform optimization and reset velocities.
         Default is 0.
-    minimize : bool
+    minimize
         Whether to minimize structure during equilibration. Default is False.
-    minimize_every : int
+    minimize_every
         Frequency of minimizations. Default is -1, which disables minimization after
         beginning dynamics.
-    minimize_kwargs : Optional[dict[str, Any]]
+    minimize_kwargs
         Keyword arguments to pass to geometry optimizer. Default is {}.
-    rescale_velocities : bool
+    rescale_velocities
         Whether to rescale velocities. Default is False.
-    remove_rot : bool
+    remove_rot
         Whether to remove rotation. Default is False.
-    rescale_every : int
+    rescale_every
         Frequency to rescale velocities. Default is 10.
-    file_prefix : Optional[PathLike]
+    file_prefix
         Prefix for output filenames. Default is inferred from structure, ensemble,
         and temperature.
-    restart : bool
+    restart
         Whether restarting dynamics. Default is False.
-    restart_auto : bool
+    restart_auto
         Whether to infer restart file name if restarting dynamics. Default is True.
-    restart_stem : str
+    restart_stem
         Stem for restart file name. Default inferred from `file_prefix`.
-    restart_every : int
+    restart_every
         Frequency of steps to save restart info. Default is 1000.
-    rotate_restart : bool
+    rotate_restart
         Whether to rotate restart files. Default is False.
-    restarts_to_keep : int
+    restarts_to_keep
         Restart files to keep if rotating. Default is 4.
-    final_file : Optional[PathLike]
+    final_file
         File to save final configuration at each temperature of similation. Default
         inferred from `file_prefix`.
-    stats_file : Optional[PathLike]
+    stats_file
         File to save thermodynamical statistics. Default inferred from `file_prefix`.
-    stats_every : int
+    stats_every
         Frequency to output statistics. Default is 100.
-    traj_file : Optional[PathLike]
+    traj_file
         Trajectory file to save. Default inferred from `file_prefix`.
-    traj_append : bool
+    traj_append
         Whether to append trajectory. Default is False.
-    traj_start : int
+    traj_start
         Step to start saving trajectory. Default is 0.
-    traj_every : int
+    traj_every
         Frequency of steps to save trajectory. Default is 100.
-    temp_start : Optional[float]
+    temp_start
         Temperature to start heating, in K. Default is None, which disables
         heating.
-    temp_end : Optional[float]
+    temp_end
         Maximum temperature for heating, in K. Default is None, which disables
         heating.
-    temp_step : Optional[float]
+    temp_step
         Size of temperature steps when heating, in K. Default is None, which disables
         heating.
-    temp_time : Optional[float]
+    temp_time
         Time between heating steps, in fs. Default is None, which disables
         heating.
-    write_kwargs : Optional[dict[str, Any]],
+    write_kwargs
         Keyword arguments to pass to `output_structs` when saving trajectory and final
         files. Default is {}.
-    post_process_kwargs : Optional[PostProcessKwargs]
+    post_process_kwargs
         Kwargs to pass to post-processing.
-    seed : Optional[int]
+    seed
         Random seed used by numpy.random and random functions, such as in Langevin.
         Default is None.
-    log : Optional[Path]
+    log
         Path to write logs to. Default is inferred from the name of the structure file.
-    tracker : bool
+    tracker
         Whether to save carbon emissions of calculation in log file and summary.
         Default is True.
-    summary : Optional[Path]
+    summary
         Path to save summary of inputs, start/end time, and carbon emissions. Default
         is inferred from the name of the structure file.
-    config : Optional[Path]
+    config
         Path to yaml configuration file to define the above options. Default is None.
     """
-    from janus_core.calculations.md import NPH, NPT, NVE, NVT, NVT_NH
+    from janus_core.calculations.md import NPH, NPT, NPT_MTK, NVE, NVT, NVT_CSVR, NVT_NH
     from janus_core.cli.utils import (
         carbon_summary,
         check_config,
@@ -341,6 +392,18 @@ def md(
     if log:
         log_kwargs["filename"] = log
 
+    # Defaults
+    if thermostat_time is None:
+        if ensemble in ("npt", "nph", "nvt-nh"):
+            thermostat_time = 50.0
+        elif ensemble == "npt-mtk":
+            thermostat_time = 100.0
+    if barostat_time is None:
+        if ensemble in ("npt", "nph"):
+            barostat_time = 75.0
+        elif ensemble == "npt-mtk":
+            barostat_time = 1000.0
+
     dyn_kwargs = {
         "struct_path": struct,
         "arch": arch,
@@ -357,9 +420,14 @@ def md(
         "temp": temp,
         "thermostat_time": thermostat_time,
         "barostat_time": barostat_time,
+        "thermostat_chain": thermostat_chain,
+        "barostat_chain": barostat_chain,
+        "thermostat_substeps": thermostat_substeps,
+        "barostat_substeps": barostat_substeps,
         "bulk_modulus": bulk_modulus,
         "pressure": pressure,
         "friction": friction,
+        "taut": taut,
         "equil_steps": equil_steps,
         "minimize": minimize,
         "minimize_every": minimize_every,
@@ -392,30 +460,89 @@ def md(
 
     # Instantiate MD ensemble
     if ensemble == "nvt":
-        for key in ["thermostat_time", "barostat_time", "bulk_modulus", "pressure"]:
+        for key in (
+            "thermostat_time",
+            "barostat_time",
+            "bulk_modulus",
+            "pressure",
+            "taut",
+            "thermostat_chain",
+            "barostat_chain",
+            "thermostat_substeps",
+            "barostat_substeps",
+        ):
             del dyn_kwargs[key]
         dyn = NVT(**dyn_kwargs)
     elif ensemble == "npt":
-        del dyn_kwargs["friction"]
+        for key in (
+            "friction",
+            "taut",
+            "thermostat_chain",
+            "barostat_chain",
+            "thermostat_substeps",
+            "barostat_substeps",
+        ):
+            del dyn_kwargs[key]
         dyn = NPT(**dyn_kwargs)
     elif ensemble == "nph":
-        for key in ["friction", "barostat_time"]:
+        for key in (
+            "friction",
+            "barostat_time",
+            "taut",
+            "thermostat_chain",
+            "barostat_chain",
+            "thermostat_substeps",
+            "barostat_substeps",
+        ):
             del dyn_kwargs[key]
         dyn = NPH(**dyn_kwargs)
     elif ensemble == "nve":
-        for key in [
+        for key in (
             "thermostat_time",
             "barostat_time",
             "bulk_modulus",
             "pressure",
             "friction",
-        ]:
+            "taut",
+            "thermostat_chain",
+            "barostat_chain",
+            "thermostat_substeps",
+            "barostat_substeps",
+        ):
             del dyn_kwargs[key]
         dyn = NVE(**dyn_kwargs)
     elif ensemble == "nvt-nh":
-        for key in ["barostat_time", "bulk_modulus", "pressure", "friction"]:
+        for key in (
+            "barostat_time",
+            "bulk_modulus",
+            "pressure",
+            "friction",
+            "taut",
+            "thermostat_chain",
+            "barostat_chain",
+            "thermostat_substeps",
+            "barostat_substeps",
+        ):
             del dyn_kwargs[key]
         dyn = NVT_NH(**dyn_kwargs)
+    elif ensemble == "nvt-csvr":
+        for key in (
+            "thermostat_time",
+            "barostat_time",
+            "bulk_modulus",
+            "pressure",
+            "friction",
+            "thermostat_chain",
+            "barostat_chain",
+            "thermostat_substeps",
+            "barostat_substeps",
+        ):
+            del dyn_kwargs[key]
+        dyn = NVT_CSVR(**dyn_kwargs)
+    elif ensemble == "npt-mtk":
+        for key in ("bulk_modulus", "friction", "taut"):
+            del dyn_kwargs[key]
+        dyn = NPT_MTK(**dyn_kwargs)
     else:
         raise ValueError(f"Unsupported Ensemble ({ensemble})")
 

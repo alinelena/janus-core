@@ -32,23 +32,15 @@ class FileNameMixin(ABC):  # noqa: B024 (abstract-base-class-without-abstract-me
 
     Parameters
     ----------
-    struct : MaybeSequence[Atoms]
+    struct
         Structure from which to derive the default name. If `struct` is a sequence,
         the first structure will be used.
-    struct_path : PathLike | None
+    struct_path
         Path to file containing structures.
-    file_prefix : PathLike | None
+    file_prefix
         Default prefix to use.
     *additional
         Components to add to default file_prefix (joined by hyphens).
-
-    Methods
-    -------
-    _get_default_prefix(file_prefix, struct)
-        Return a prefix from the provided file_prefix or from chemical formula of
-        struct.
-    _build_filename(suffix, *additional, filename, prefix_override)
-         Return a standard format filename if filename not provided.
     """
 
     def __init__(
@@ -63,12 +55,12 @@ class FileNameMixin(ABC):  # noqa: B024 (abstract-base-class-without-abstract-me
 
         Parameters
         ----------
-        struct : MaybeSequence[Atoms]
+        struct
             Structure(s) from which to derive the default name. If `struct` is a
             sequence, the first structure will be used.
-        struct_path : PathLike | None
+        struct_path
             Path to file structures were read from. Used as default prefix is not None.
-        file_prefix : PathLike | None
+        file_prefix
             Default prefix to use.
         *additional
             Components to add to default file_prefix (joined by hyphens).
@@ -89,12 +81,12 @@ class FileNameMixin(ABC):  # noqa: B024 (abstract-base-class-without-abstract-me
 
         Parameters
         ----------
-        file_prefix : PathLike | None
+        file_prefix
             Given file_prefix.
-        struct : MaybeSequence[Atoms]
+        struct
             Structure(s) from which to derive the default name. If `struct` is a
             sequence, the first structure will be used.
-        struct_path : PathLike | None
+        struct_path
             Path to file containing structures.
         *additional
             Components to add to default file_prefix (joined by hyphens).
@@ -129,13 +121,13 @@ class FileNameMixin(ABC):  # noqa: B024 (abstract-base-class-without-abstract-me
 
         Parameters
         ----------
-        suffix : str
+        suffix
             Default suffix to use if `filename` is not specified.
         *additional
             Extra components to add to suffix (joined with hyphens).
-        filename : PathLike | None
+        filename
             Filename to use, if specified. Default is None.
-        prefix_override : str | None
+        prefix_override
             Replace file_prefix if not None.
 
         Returns
@@ -162,7 +154,7 @@ def none_to_dict(*dictionaries: Sequence[dict | None]) -> Generator[dict, None, 
 
     Parameters
     ----------
-    *dictionaries : Sequence[dict | None]
+    *dictionaries
         Sequence of dictionaries that could be None.
 
     Yields
@@ -195,12 +187,12 @@ def write_table(
 
     Parameters
     ----------
-    fmt : {'ascii', 'csv'}
+    fmt
         Format to write table in.
-    file : TextIO
+    file
         File to dump to. If unspecified function returns
         io.StringIO object simulating file.
-    units : dict[str, str]
+    units
         Units as ``{key: unit}``:
 
         key
@@ -322,13 +314,13 @@ def _dump_ascii(
 
     Parameters
     ----------
-    file : TextIO
+    file
         File to dump to.
-    header : list[str]
+    header
         Column name information.
-    columns : dict[str, Sequence[Any]]
+    columns
         Column data by key (ordered with header info).
-    formats : Sequence[str]
+    formats
         Python magic string formats to apply
         (must align with header info).
 
@@ -339,7 +331,7 @@ def _dump_ascii(
     if header:
         print(f"# {' | '.join(header)}", file=file)
 
-    for cols in zip(*columns.values()):
+    for cols in zip(*columns.values(), strict=True):
         print(*map(format, cols, formats), file=file)
 
 
@@ -354,13 +346,13 @@ def _dump_csv(
 
     Parameters
     ----------
-    file : TextIO
+    file
         File to dump to.
-    header : list[str]
+    header
         Column name information.
-    columns : dict[str, Sequence[Any]]
+    columns
         Column data by key (ordered with header info).
-    formats : Sequence[str]
+    formats
         Python magic string formats to apply
         (must align with header info).
 
@@ -371,7 +363,7 @@ def _dump_csv(
     if header:
         print(",".join(header), file=file)
 
-    for cols in zip(*columns.values()):
+    for cols in zip(*columns.values(), strict=True):
         print(",".join(map(format, cols, formats)), file=file)
 
 
@@ -385,9 +377,9 @@ def track_progress(sequence: Sequence | Iterable, description: str) -> Iterable:
 
     Parameters
     ----------
-    sequence : Iterable
+    sequence
         The sequence to iterate over. Must support "len".
-    description : str
+    description
         The text to display to the left of the progress bar.
 
     Yields
@@ -422,9 +414,9 @@ def check_files_exist(config: dict, req_file_keys: Sequence[PathLike]) -> None:
 
     Parameters
     ----------
-    config : dict
+    config
         Dictionary read from configuration file.
-    req_file_keys : Sequence[Pathlike]
+    req_file_keys
         Files that must exist if defined in the configuration file.
 
     Raises
@@ -445,7 +437,7 @@ def validate_slicelike(maybe_slicelike: SliceLike) -> None:
 
     Parameters
     ----------
-    maybe_slicelike : SliceLike
+    maybe_slicelike
         Candidate to test.
 
     Raises
@@ -453,7 +445,7 @@ def validate_slicelike(maybe_slicelike: SliceLike) -> None:
     ValueError
         If maybe_slicelike is not SliceLike.
     """
-    if isinstance(maybe_slicelike, (slice, range, int)):
+    if isinstance(maybe_slicelike, slice | range | int):
         return
     if isinstance(maybe_slicelike, tuple) and len(maybe_slicelike) == 3:
         start, stop, step = maybe_slicelike
@@ -473,7 +465,7 @@ def slicelike_to_startstopstep(index: SliceLike) -> StartStopStep:
 
     Parameters
     ----------
-    index : SliceLike
+    index
         `SliceLike` to standardize.
 
     Returns
@@ -487,7 +479,7 @@ def slicelike_to_startstopstep(index: SliceLike) -> StartStopStep:
             return (index, None, 1)
         return (index, index + 1, 1)
 
-    if isinstance(index, (slice, range)):
+    if isinstance(index, slice | range):
         return (index.start, index.stop, index.step)
 
     return index
@@ -499,9 +491,9 @@ def selector_len(slc: SliceLike | list, selectable_length: int) -> int:
 
     Parameters
     ----------
-    slc : Union[SliceLike, list]
+    slc
         The applied SliceLike or list for selection.
-    selectable_length : int
+    selectable_length
         The length of the selectable object.
 
     Returns
@@ -517,3 +509,38 @@ def selector_len(slc: SliceLike | list, selectable_length: int) -> int:
     if stop is None:
         stop = selectable_length
     return len(range(start, stop, step))
+
+
+def set_log_tracker(
+    attach_logger: bool, log_kwargs: dict, track_carbon: bool
+) -> tuple[bool, bool]:
+    """
+    Set attach_logger and track_carbon default values.
+
+    Parameters
+    ----------
+    attach_logger
+        Whether to attach a logger.
+    log_kwargs
+        Keyword arguments to pass to `config_logger`.
+    track_carbon
+        Whether to track carbon emissions of calculation.
+
+    Returns
+    -------
+    tuple[bool, bool]
+        Default values for attach_logger and track_carbon.
+    """
+    if "filename" in log_kwargs:
+        attach_logger = True
+    else:
+        attach_logger = attach_logger if attach_logger else False
+
+    if not attach_logger:
+        if track_carbon:
+            raise ValueError("Carbon tracking requires logging to be enabled")
+        track_carbon = False
+    else:
+        track_carbon = track_carbon if track_carbon is not None else True
+
+    return attach_logger, track_carbon

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ase import Atoms
 from ase.io import read
+import ase.md.nose_hoover_chain
 import numpy as np
 import pytest
 from typer.testing import CliRunner
@@ -13,6 +14,11 @@ import yaml
 
 from janus_core.cli.janus import app
 from tests.utils import assert_log_contains, clear_log_handlers, strip_ansi_codes
+
+if hasattr(ase.md.nose_hoover_chain, "IsotropicMTKNPT"):
+    MTK_IMPORT_FAILED = False
+else:
+    MTK_IMPORT_FAILED = True
 
 DATA_PATH = Path(__file__).parent / "data"
 
@@ -26,13 +32,7 @@ def test_md_help():
     assert "Usage: janus md [OPTIONS]" in strip_ansi_codes(result.stdout)
 
 
-test_data = [
-    ("nvt"),
-    ("nve"),
-    ("npt"),
-    ("nvt-nh"),
-    ("nph"),
-]
+test_data = [("nvt"), ("nve"), ("npt"), ("nvt-nh"), ("nph"), ("nvt-csvr"), ("npt-mtk")]
 
 
 @pytest.mark.parametrize("ensemble", test_data)
@@ -45,7 +45,12 @@ def test_md(ensemble):
         "npt": "NaCl-npt-T300.0-p0.0-",
         "nvt-nh": "NaCl-nvt-nh-T300.0-",
         "nph": "NaCl-nph-T300.0-p0.0-",
+        "nvt-csvr": "NaCl-nvt-csvr-T300.0-",
+        "npt-mtk": "NaCl-npt-mtk-T300.0-p0.0-",
     }
+
+    if ensemble == "npt-mtk" and MTK_IMPORT_FAILED:
+        pytest.skip(reason="Requires updated version of ASE")
 
     final_path = Path(f"{file_prefix[ensemble]}final.extxyz").absolute()
     restart_path = Path(f"{file_prefix[ensemble]}res-2.extxyz").absolute()
@@ -108,6 +113,23 @@ def test_md(ensemble):
         assert "momenta" in atoms.arrays
         assert "masses" in atoms.arrays
 
+        expected_units = {
+            "time": "fs",
+            "real_time": "s",
+            "energy": "eV",
+            "forces": "ev/Ang",
+            "stress": "ev/Ang^3",
+            "temperature": "K",
+            "density": "g/cm^3",
+            "momenta": "(eV*u)^0.5",
+        }
+        if ensemble in ("nvt", "nvt-nh"):
+            expected_units["pressure"] = "GPa"
+
+        assert "units" in atoms.info
+        for prop, units in expected_units.items():
+            assert atoms.info["units"][prop] == units
+
     finally:
         final_path.unlink(missing_ok=True)
         restart_path.unlink(missing_ok=True)
@@ -153,7 +175,7 @@ def test_log(tmp_path):
         assert len(lines) == 22
 
         # Test constant volume
-        assert lines[0].split(" | ")[8] == "Volume [A^3]"
+        assert lines[0].split(" | ")[8] == "Volume [Ang^3]"
         init_volume = float(lines[1].split()[8])
         final_volume = float(lines[-1].split()[8])
         assert init_volume == 179.406144
@@ -228,7 +250,9 @@ def test_seed(tmp_path):
 
         final_stats_2 = lines[2].split()
 
-    for i, (stats_1, stats_2) in enumerate(zip(final_stats_1, final_stats_2)):
+    for i, (stats_1, stats_2) in enumerate(
+        zip(final_stats_1, final_stats_2, strict=True)
+    ):
         if i != 1:
             assert stats_1 == stats_2
 

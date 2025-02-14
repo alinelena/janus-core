@@ -21,17 +21,47 @@ This provides a number of useful features, including:
 
 Dependencies useful for development can then be installed by running::
 
-    uv sync
+    uv sync -p 3.12
     source .venv/bin/activate
 
 
 Extras, such as optional MLIPs, can also be installed by running::
 
-    uv sync --extra alignn --extra sevennet
+    uv sync -p 3.12 --extra alignn --extra sevennet
 
 or to install all supported MLIPs::
 
-    uv sync --all-extras
+    uv sync -p 3.12 --all-extras
+
+
+Using uv
+++++++++
+
+``uv`` manages a `persistent environment <https://docs.astral.sh/uv/concepts/projects/layout/#the-project-environment>`_
+with the project and its dependencies in a ``.venv`` directory, adjacent to ``pyproject.toml``. This will be created automatically as needed.
+
+``uv`` provides two separate APIs for managing your Python project and environment.
+
+``uv pip`` is designed to resemble the ``pip`` CLI, with similar commands (``uv pip install``,  ``uv pip list``, ``uv pip tree``, etc.),
+and is slightly lower level. `Compared with pip <https://docs.astral.sh/uv/pip/compatibility/>`_,
+``uv`` tends to be stricter, but in most cases ``uv pip`` could be used in place of ``pip``.
+
+``uv add``, ``uv run``, ``uv sync``, and ``uv lock`` are known as "project APIs", and are slightly higher level.
+These commands interact with (and require) ``pyproject.toml``, and ``uv`` will ensure your environment is in-sync when they are called,
+including creating or updating a `lockfile <https://docs.astral.sh/uv/concepts/projects/sync/>`_,
+a universal resolution that is `portable across platforms <https://docs.astral.sh/uv/concepts/resolution/#universal-resolution>`_.
+
+When developing for ``janus-core``, it is usually recommended to use project commands, as described in `Getting started`_
+rather than using ``uv pip install`` to modify the project environment manually.
+
+.. tip::
+
+    ``uv`` will detect and use Python versions available on your system,
+    but can also be used to `install Python automtically <https://docs.astral.sh/uv/guides/install-python/>`_.
+    The desired Python version can be specified when running project commands with the ``--python``/``-p`` option.
+
+
+For further information, please refer to the `documentation <https://docs.astral.sh/uv/>`_
 
 
 Running unit tests
@@ -79,7 +109,10 @@ The full set of `ruff rules <https://docs.astral.sh/ruff/rules/>`_ are specified
 Building the documentation
 ++++++++++++++++++++++++++
 
-Packages in the ``docs`` dependency group install `Sphinx <https://www.sphinx-doc.org>`_ and other packages required to build ``janus-core``'s documentation.
+Packages in the ``docs`` dependency group install `Sphinx <https://www.sphinx-doc.org>`_
+and other Python packages required to build ``janus-core``'s documentation.
+
+It is also necessary to `install pandoc <https://pandoc.org/installing.html>`_ on your system.
 
 Individual individual documentation pages can be edited directly::
 
@@ -111,6 +144,19 @@ To document a new module, a new block must be added. For example, for the ``janu
 
         cd docs
         make clean; make html
+
+
+Notebook tutorials
+++++++++++++++++++
+
+Jupyter notebooks in ``docs/source/tutorials`` are automatically run by ``Sphinx`` using the
+`nbsphinx <https://nbsphinx.readthedocs.io/en/0.2.15/index.html>`_ extension, creating the :doc:`Tutorials </tutorials/index>`.
+
+
+These are tested before ``janus-core`` is published to PyPI, but can be tested locally by running::
+
+        cd docs
+        make clean; make tutorials
 
 
 Continuous integration

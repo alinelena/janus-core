@@ -30,9 +30,9 @@ def _set_model_path(
 
     Parameters
     ----------
-    model_path : PathLike | None
+    model_path
         Path to MLIP file.
-    kwargs : dict[str, Any] | None
+    kwargs
         Dictionary of additional keyword arguments passed to the selected calculator.
 
     Returns
@@ -64,7 +64,7 @@ def _set_model_path(
         model_path = kwargs.pop(present.pop())
 
     # Convert to path if file/directory exists
-    if isinstance(model_path, (Path, str)) and Path(model_path).expanduser().exists():
+    if isinstance(model_path, Path | str) and Path(model_path).expanduser().exists():
         return Path(model_path).expanduser()
     return model_path
 
@@ -80,11 +80,11 @@ def choose_calculator(
 
     Parameters
     ----------
-    arch : Architectures
+    arch
         MLIP architecture. Default is "mace".
-    device : Devices
+    device
         Device to run calculator on. Default is "cpu".
-    model_path : PathLike | None
+    model_path
         Path to MLIP file.
     **kwargs
         Additional keyword arguments passed to the selected calculator.
@@ -113,8 +113,7 @@ def choose_calculator(
         # No default `model_path`
         if model_path is None:
             raise ValueError(
-                "Please specify `model_path`, as there is no "
-                f"default model for {arch}"
+                f"Please specify `model_path`, as there is no default model for {arch}"
             )
         # Default to float64 precision
         kwargs.setdefault("default_dtype", "float64")
@@ -278,9 +277,9 @@ def check_calculator(calc: Calculator, attribute: str) -> None:
 
     Parameters
     ----------
-    calc : Calculator
+    calc
         ASE Calculator to check.
-    attribute : str
+    attribute
         Attribute to check calculator for.
     """
     # If dispersion added to MLIP calculator, use only MLIP calculator for calculation
