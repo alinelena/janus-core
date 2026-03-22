@@ -7,6 +7,7 @@ from itertools import combinations_with_replacement
 
 from ase import Atoms
 from ase.geometry.analysis import Analysis
+from ase.geometry.rdf import get_rdf as ase_get_rdf
 import numpy as np
 from numpy import float64
 from numpy.typing import NDArray
@@ -93,14 +94,17 @@ def compute_rdf(
         )
 
         rdf = {
-            element: ana.get_rdf(
-                rmax=rmax,
-                nbins=nbins,
-                elements=element,
-                imageIdx=slice(*index),
-                return_dists=True,
-                volume=volume,
-            )
+            element: [
+                tuple(
+                    ase_get_rdf(
+                        atoms=img,
+                        rmax=rmax,
+                        nbins=nbins,
+                        elements=element,
+                        volume=volume,
+                    )
+                ) for img in data[slice(*index)]
+            ]
             for element in combinations_with_replacement(elements, 2)
         }
 
@@ -129,14 +133,17 @@ def compute_rdf(
                         print(dist, rdf_i, file=out_file)
 
     else:
-        rdf = ana.get_rdf(
-            rmax=rmax,
-            nbins=nbins,
-            elements=elements,
-            imageIdx=slice(*index),
-            return_dists=True,
-            volume=volume,
-        )
+        rdf = [
+            tuple(
+                ase_get_rdf(
+                    atoms=img,
+                    rmax=rmax,
+                    nbins=nbins,
+                    elements=elements,
+                    volume=volume,
+                )
+            ) for img in data[slice(*index)]
+        ]
 
         assert isinstance(rdf, list)
 
