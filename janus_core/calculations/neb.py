@@ -232,7 +232,8 @@ class NEB(BaseCalculation):
         self.write_results = write_results
         self.write_band = write_band
         self.write_kwargs = write_kwargs
-        self.neb_kwargs = neb_kwargs
+        self.neb_kwargs = neb_kwargs if neb_kwargs is not None else {}
+        self.neb_kwargs.setdefault("method", "aseneb")
         self.interpolator = interpolator
         self.interpolator_kwargs = interpolator_kwargs
         self.optimizer = optimizer
