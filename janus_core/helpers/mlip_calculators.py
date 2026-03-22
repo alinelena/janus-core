@@ -332,6 +332,18 @@ def choose_calculator(
             calculator = ORBCalculator(model=loaded_model, device=device, **kwargs)
 
         case "mattersim":
+            try:
+                import ase.constraints
+
+                if not hasattr(ase.constraints, "full_3x3_to_voigt_6_stress"):
+                    from ase.stress import full_3x3_to_voigt_6_stress
+
+                    ase.constraints.full_3x3_to_voigt_6_stress = (
+                        full_3x3_to_voigt_6_stress
+                    )
+            except ImportError:
+                pass
+
             from mattersim import __version__
             from mattersim.forcefield import MatterSimCalculator
             from torch.nn import Module

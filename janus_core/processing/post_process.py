@@ -103,7 +103,8 @@ def compute_rdf(
                         elements=element,
                         volume=volume,
                     )
-                ) for img in data[slice(*index)]
+                )
+                for img in data[slice(*index)]
             ]
             for element in combinations_with_replacement(elements, 2)
         }
@@ -142,7 +143,8 @@ def compute_rdf(
                     elements=elements,
                     volume=volume,
                 )
-            ) for img in data[slice(*index)]
+            )
+            for img in data[slice(*index)]
         ]
 
         assert isinstance(rdf, list)
